@@ -1,6 +1,6 @@
 <?php
 // functions
-include "db.php";
+//include "db.php";
 
 function _http_res($time, $dir){
   echo "<meta http-equiv='refresh' content='{$time};url={$dir}'>";
