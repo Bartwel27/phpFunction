@@ -284,24 +284,42 @@ function _error($msg) {
     ";
 }
 
-$invalidChars = " \"<>#%{}|\\^~[]`:\/?@!$&'()*+,;=";
-$validChars = "0123456789";
-$invalid_get_chars = [
+function _session_ip_blocker_(){
+  
+if (isset($_COOKIE["PHPSESSID"])) {
 
-    // Not allowed directly in URLs
-    " ",  "\"", "<",  ">",  "#",  "%",  "{",  "}",  "|",
-    "\\", "^",  "~",  "[",  "]",  "`",
-    
-    // Reserved characters (must be encoded if used as data)
-    ":",  "/",  "?",  "@",  "!",  "$",  "&",  "'",
-    "(",  ")",  "*",  "+",  ",",  ";",  "=",
-    
-    // Lowercase letters
-    "a",  "b",  "c",  "d",  "e",  "f",  "g",  "h",  "i",  "j",  "k",  "l",  "m",
-    "n",  "o",  "p",  "q",  "r",  "s",  "t",  "u",  "v",  "w",  "x",  "y",  "z",
-    
-    // Uppercase letters
-    "A",  "B",  "C",  "D",  "E",  "F",  "G",  "H",  "I",  "J",  "K",  "L",  "M",
-    "N",  "O",  "P",  "Q",  "R",  "S",  "T",  "U",  "V",  "W",  "X",  "Y",  "Z",
+  $session_id = $_COOKIE["PHPSESSID"];
+  $assigned_id = uniqid("",false);
+  $ip = getClientIP();
+  $status = "yes";
 
-];
+  $visit_stmt = mysqli_stmt_init($connect);
+  $visit_sql = "insert into tbvisitors (`assigned_id`,`visitor_session`,`visitor_ipaddress`,`status`) values (?,?,?,?)";
+  mysqli_stmt_prepare($visit_stmt,$visit_sql);
+  mysqli_stmt_bind_param($visit_stmt, "ssss", $assigned_id, $session_id, $ip, $status);
+  mysqli_stmt_execute($visit_stmt);
+  mysqli_stmt_close($visit_stmt);
+
+  // manuel ip block
+  $checkip_allowed = mysqli_query($connect, "select status, visitor_ipaddress from tbvisitors where status = 'no'"); // == no
+  $checkip_fetch = mysqli_fetch_assoc($checkip_allowed);
+  if (mysqli_num_rows($checkip_allowed) > 0) {
+    if ($ip == $checkip_fetch["visitor_ipaddress"]) {
+      _http_res(0, "block.php?blockedIpAddress=$ip");
+    }
+  }
+
+  // automatic ip block
+  $autoip_q = mysqli_query($connect, "select visitor_ipaddress from tbvisitors where visitor_ipaddress = '$ip'");
+  if (mysqli_num_rows($autoip_q) > 19) {
+    mysqli_query($connect, "update tbvisitors set status = 'no' where visitor_ipaddress = '$ip'");
+    _http_res(0,"block.php?blockedIpAddress=$ip");
+  }
+  
+} else {
+  echo "reload this page.";
+}
+}
+
+
+
