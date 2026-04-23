@@ -284,7 +284,7 @@ function _error($msg) {
     ";
 }
 
-function _session_ip_blocker_(){
+function _session_ip_blocker_($connect){
   
 if (isset($_COOKIE["PHPSESSID"])) {
 
@@ -293,12 +293,27 @@ if (isset($_COOKIE["PHPSESSID"])) {
   $ip = getClientIP();
   $status = "yes";
 
-  $visit_stmt = mysqli_stmt_init($connect);
-  $visit_sql = "insert into tbvisitors (`assigned_id`,`visitor_session`,`visitor_ipaddress`,`status`) values (?,?,?,?)";
-  mysqli_stmt_prepare($visit_stmt,$visit_sql);
-  mysqli_stmt_bind_param($visit_stmt, "ssss", $assigned_id, $session_id, $ip, $status);
-  mysqli_stmt_execute($visit_stmt);
-  mysqli_stmt_close($visit_stmt);
+  $check_record_stmt = mysqli_stmt_init($connect);
+  $check_record_sql = "select visitor_ipaddress from tbvisitors where visitor_ipaddress = ?";
+  if (mysqli_stmt_prepare($check_record_stmt,$check_record_sql)) {
+    if (mysqli_stmt_bind_param($check_record_stmt,"s",$ip)) {
+      if (mysqli_stmt_execute($check_record_stmt)) {
+        $check_record_result = mysqli_stmt_get_result($check_record_stmt);
+        if (mysqli_num_rows($check_record_result) < VISITOR_SESSIONAL_ALLOWED) {
+          $visit_stmt = mysqli_stmt_init($connect);
+          $visit_sql = "insert into tbvisitors (`assigned_id`,`visitor_session`,`visitor_ipaddress`,`status`) values (?,?,?,?)";
+          mysqli_stmt_prepare($visit_stmt,$visit_sql);
+          mysqli_stmt_bind_param($visit_stmt, "ssss", $assigned_id, $session_id, $ip, $status);
+          mysqli_stmt_execute($visit_stmt);
+          mysqli_stmt_close($visit_stmt);
+        } else {
+          _http_res(0,"block.php?blockedIpAddress=$ip");
+          exit();
+        }
+      }
+    }
+  }
+ 
 
   // manuel ip block
   $checkip_allowed = mysqli_query($connect, "select status, visitor_ipaddress from tbvisitors where status = 'no'"); // == no
